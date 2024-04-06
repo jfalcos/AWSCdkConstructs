@@ -7,10 +7,11 @@ export class CdkSimpleWebsiteTemplateStack extends cdk.Stack {
     super(scope, id, props);
     new SimpleWebsiteConstruct(this, "SimpleWebsiteConstruct", {
       bucketName: "replace",
-      domainName: "replace",
+      domainNames: ["replace"],
       prefixForId: "replace",
       hostedZoneId: "replace",
-      terminationProtection: true,
+      terminationProtection: false,
+      isSinglePageApplication: true,
     });
   }
 }

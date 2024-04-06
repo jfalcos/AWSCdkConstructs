@@ -15,11 +15,12 @@ import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 
 interface SimpleWebsiteConstructProps {
-  domainName: string;
+  domainNames: string[]; // Change domainName to domainNames array
   bucketName: string;
   prefixForId: string;
   hostedZoneId: string;
-  terminationProtection?: boolean; // Add terminationProtection property
+  terminationProtection?: boolean;
+  isSinglePageApplication?: boolean;
 }
 
 export class SimpleWebsiteConstruct extends Construct {
@@ -37,7 +38,7 @@ export class SimpleWebsiteConstruct extends Construct {
     );
 
     const certificate = this.createIAMCertificate(
-      props.domainName,
+      props.domainNames,
       props.prefixForId,
       hostedZone
     );
@@ -45,24 +46,26 @@ export class SimpleWebsiteConstruct extends Construct {
     const bucket = this.createS3Bucket(
       props.bucketName,
       props.prefixForId,
-      props.terminationProtection // Pass terminationProtection to createS3Bucket method
+      props.terminationProtection
     );
 
     const distribution = this.createCloudFrontDistribution(
       bucket,
       props.prefixForId,
       certificate,
-      props.domainName
+      props.domainNames,
+      props.isSinglePageApplication
     );
   }
 
   private createIAMCertificate(
-    domainName: string,
+    domainNames: string[],
     prefixForId: string,
     hostedZone: IHostedZone
   ): Certificate {
     return new Certificate(this, `${prefixForId}Certificate`, {
-      domainName: domainName,
+      domainName: domainNames[0], // Use the first domain name in the array
+      subjectAlternativeNames: domainNames.slice(1), // Use the remaining domain names as subject alternative names
       validation: CertificateValidation.fromDns(hostedZone),
     });
   }
@@ -70,13 +73,13 @@ export class SimpleWebsiteConstruct extends Construct {
   private createS3Bucket(
     bucketName: string,
     prefixForId: string,
-    terminationProtection?: boolean // Add terminationProtection parameter
+    terminationProtection?: boolean
   ): Bucket {
     const bucket = new Bucket(this, `${prefixForId}Bucket`, {
       bucketName: bucketName,
       removalPolicy: terminationProtection
         ? RemovalPolicy.RETAIN
-        : RemovalPolicy.DESTROY, // Set removal policy based on terminationProtection
+        : RemovalPolicy.DESTROY,
     });
 
     return bucket;
@@ -86,7 +89,8 @@ export class SimpleWebsiteConstruct extends Construct {
     bucket: Bucket,
     prefixForId: string,
     certificate: Certificate,
-    domainName: string
+    domainNames: string[],
+    isSinglePageApplication?: boolean
   ): Distribution {
     const oai = new OriginAccessIdentity(this, `${prefixForId}OAI`);
     const distribution = new Distribution(this, `${prefixForId}Distribution`, {
@@ -99,7 +103,21 @@ export class SimpleWebsiteConstruct extends Construct {
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
       },
       certificate: certificate,
-      domainNames: [domainName],
+      domainNames: domainNames,
+      errorResponses: isSinglePageApplication
+        ? [
+            {
+              httpStatus: 404,
+              responseHttpStatus: 200,
+              responsePagePath: "/index.html",
+            },
+            {
+              httpStatus: 403,
+              responseHttpStatus: 200,
+              responsePagePath: "/index.html",
+            },
+          ]
+        : undefined,
     });
     return distribution;
   }
