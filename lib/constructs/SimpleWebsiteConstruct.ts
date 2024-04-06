@@ -1,15 +1,10 @@
+import { CloudFrontToS3 } from "@aws-solutions-constructs/aws-cloudfront-s3";
 import { RemovalPolicy } from "aws-cdk-lib";
 import {
   Certificate,
   CertificateValidation,
 } from "aws-cdk-lib/aws-certificatemanager";
-import {
-  CachePolicy,
-  Distribution,
-  OriginAccessIdentity,
-  ViewerProtocolPolicy,
-} from "aws-cdk-lib/aws-cloudfront";
-import { S3Origin } from "aws-cdk-lib/aws-cloudfront-origins";
+import { Distribution } from "aws-cdk-lib/aws-cloudfront";
 import { HostedZone, IHostedZone } from "aws-cdk-lib/aws-route53";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
@@ -92,33 +87,34 @@ export class SimpleWebsiteConstruct extends Construct {
     domainNames: string[],
     isSinglePageApplication?: boolean
   ): Distribution {
-    const oai = new OriginAccessIdentity(this, `${prefixForId}OAI`);
-    const distribution = new Distribution(this, `${prefixForId}Distribution`, {
-      defaultBehavior: {
-        origin: new S3Origin(bucket, {
-          originAccessIdentity: oai,
-        }),
-        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachedMethods: { methods: ["GET", "HEAD"] },
-        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
-      },
-      certificate: certificate,
-      domainNames: domainNames,
-      errorResponses: isSinglePageApplication
-        ? [
-            {
-              httpStatus: 404,
-              responseHttpStatus: 200,
-              responsePagePath: "/index.html",
-            },
-            {
-              httpStatus: 403,
-              responseHttpStatus: 200,
-              responsePagePath: "/index.html",
-            },
-          ]
-        : undefined,
-    });
-    return distribution;
+    const cloudFrontToS3 = new CloudFrontToS3(
+      this,
+      `${prefixForId}CloudFrontToS3`,
+      {
+        existingBucketObj: bucket,
+        logS3AccessLogs: false,
+        cloudFrontDistributionProps: {
+          certificate: certificate,
+          domainNames: domainNames,
+          insertHttpSecurityHeaders: false,
+          errorResponses: isSinglePageApplication
+            ? [
+                {
+                  httpStatus: 404,
+                  responseHttpStatus: 200,
+                  responsePagePath: "/index.html",
+                },
+                {
+                  httpStatus: 403,
+                  responseHttpStatus: 200,
+                  responsePagePath: "/index.html",
+                },
+              ]
+            : undefined,
+        },
+        cloudFrontLoggingBucketProps: {},
+      }
+    );
+    return cloudFrontToS3.cloudFrontWebDistribution;
   }
 }
