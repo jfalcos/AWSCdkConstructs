@@ -10,7 +10,8 @@
     "test": "npm run build && jest",
     "bootstrap": "npm run build && cdk bootstrap",
     "liststacks": "cdk list",
-    "deploysimplewebsite": "npm run build && cdk deploy CdkSimpleWebsiteTemplateStack",
+    "deploysimplewebsite": "npm run build && cdk deploy SimpleWebsiteTemplateStack",
+    "deploysimplesecuremavenrepo": "npm run build && cdk deploy SimpleSecureMavenRepositoryTemplateStack",
     "cdk": "cdk"
   },
   "devDependencies": {
