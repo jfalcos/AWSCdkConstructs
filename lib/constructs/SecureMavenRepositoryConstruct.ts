@@ -1,14 +1,11 @@
 import { CfnOutput } from "aws-cdk-lib";
-import {
-  Distribution,
-  OriginAccessIdentity,
-  ViewerProtocolPolicy,
-} from "aws-cdk-lib/aws-cloudfront";
-import { S3Origin } from "aws-cdk-lib/aws-cloudfront-origins";
+import { Distribution, ViewerProtocolPolicy } from "aws-cdk-lib/aws-cloudfront";
+import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import {
   BlockPublicAccess,
   Bucket,
   BucketEncryption,
+  ObjectOwnership,
 } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 
@@ -26,22 +23,16 @@ export class SecureMavenRepositoryConstruct extends Construct {
     // Create an S3 bucket
     this.bucket = new Bucket(this, "MavenArtifactsBucket", {
       bucketName: props.bucketName,
-      versioned: true,
+      versioned: false,
       encryption: BucketEncryption.S3_MANAGED,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-    });
-
-    // Create an Origin Access Identity for CloudFront
-    const oai = new OriginAccessIdentity(this, "OAI", {
-      comment: `OAI for ${this.bucket.bucketName}`,
+      objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
     });
 
     // Create a CloudFront distribution
     this.distribution = new Distribution(this, "Distribution", {
       defaultBehavior: {
-        origin: new S3Origin(this.bucket, {
-          originAccessIdentity: oai,
-        }),
+        origin: S3BucketOrigin.withOriginAccessControl(this.bucket),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
     });

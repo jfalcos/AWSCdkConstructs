@@ -94,6 +94,7 @@ export class SimpleWebsiteConstruct extends Construct {
         existingBucketObj: bucket,
         logS3AccessLogs: false,
         cloudFrontDistributionProps: {
+          OriginAccessIdentity: "oac",
           certificate: certificate,
           domainNames: domainNames,
           insertHttpSecurityHeaders: false,
